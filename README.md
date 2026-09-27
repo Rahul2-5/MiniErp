@@ -116,15 +116,6 @@ npm test
 
 `npm test` applies the migrations to `mini_erp_test` and runs 64 tests one after another (`--runInBand`, they share one database) against the real Express app and real PostgreSQL. They cover the quotation maths, status rules, duplicate-order protection, insufficient stock, role checks, and concurrent reservations (two orders racing for the same stock).
 
-## Documentation
-
-| File | What it is |
-|---|---|
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Interview cheat sheet: what was decided and why |
-| [docs/ER-diagram.md](docs/ER-diagram.md) | Mermaid ER diagram, constraints and status flows |
-| [docs/postman_collection.json](docs/postman_collection.json) | Import into Postman: every endpoint, a `{{token}}` login, and tests |
-| [docs/PROGRESS.md](docs/PROGRESS.md) | What was built in each phase and how it was checked |
-| [CLAUDE.md](CLAUDE.md) | The full specification the project was built from |
 
 ## API overview
 
