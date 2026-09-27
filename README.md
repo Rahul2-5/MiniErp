@@ -138,17 +138,6 @@ All endpoints are under `/api`. Everything except login needs `Authorization: Be
 | GET | `/sales-orders`, `/sales-orders/:id` | any |
 | POST | `/sales-orders/:id/confirm`, `/dispatch`, `/cancel` | ADMIN |
 
-## Known simplifications
-
-- **Full dispatch only.** An order is dispatched in one go; there is no `dispatch_items` table. Partial dispatch would add that table.
-- **No registration.** Users come from the seed script; there is no password reset or user management.
-- **Seeded users and one role each.** A user is either ADMIN or SALES.
-- **Quantities are whole numbers**, and a product can appear only once per enquiry or quotation.
-- **A REJECTED quotation makes its enquiry LOST for good**; there is no "revise after rejection".
-- **Not handled:** expired quotations (`valid_until` is stored but not enforced) and accepting two quotations of the same enquiry.
-- **JWT is kept in `localStorage`**, the simplest option; an httpOnly cookie with CSRF protection would be more secure.
-- **The frontend has no automated tests**; the backend is covered by the Jest suite.
-
 ## Project structure
 
 ```
