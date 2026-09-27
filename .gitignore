@@ -1,6 +1,8 @@
 node_modules/
 .env
 .env.test
-.DECISIONS.md
-.PROGRESS.md
+docs/DECISIONS.md
+docs/PROGRESS.md
+CLAUDE.md
+CLAUDE (1).md
 dist/
