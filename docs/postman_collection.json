@@ -1,0 +1,2291 @@
+{
+  "info": {
+    "name": "Mini ERP API",
+    "description": "Run the folders in order (Collection Runner) or one request at a time.\n\n1. Start the backend (npm start in backend/) and set the baseUrl variable if it is not http://localhost:4000/api.\n2. Run \"Login as SALES\" first; the JWT is stored in {{token}} and sent as a Bearer token by every other request.\n3. Requests named \"(expect 4xx)\" show a business rule refusing a request; their tests assert that status.\n\nTest users: admin@erp.com / Admin@123 (ADMIN), sales@erp.com / Sales@123 (SALES).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "description": "Run \"Login as SALES\" first. Every later request uses {{token}}.",
+      "item": [
+        {
+          "name": "Login as SALES (sets {{token}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token', json.token);",
+                  "pm.test('token returned', () => pm.expect(json.token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sales@erp.com\",\n  \"password\": \"Sales@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Stores the JWT in the {{token}} collection variable; every other request sends it as a Bearer token."
+          }
+        },
+        {
+          "name": "Get current user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role is SALES', () => pm.expect(pm.response.json().role).to.eql('SALES'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login with a wrong password (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sales@erp.com\",\n  \"password\": \"wrong\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Wrong password: the backend answers 401 with the same message as for an unknown email."
+          }
+        },
+        {
+          "name": "No token at all (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Customers and products (as SALES)",
+      "item": [
+        {
+          "name": "List customers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('customerId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company_name\": \"Postman Test Pvt. Ltd.\",\n  \"contact_person\": \"Priya Sharma\",\n  \"mobile\": \"9876543210\",\n  \"city\": \"Nagpur\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create customer, missing company_name (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contact_person\": \"x\",\n  \"mobile\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List products with inventory",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const products = pm.response.json();",
+                  "const find = (code) => products.find((p) => p.code === code);",
+                  "pm.collectionVariables.set('msProductId', find('MS-SHT-02').id);",
+                  "pm.collectionVariables.set('hpProductId', find('HP-200').id);",
+                  "pm.collectionVariables.set('bbProductId', find('BB-6205').id);",
+                  "pm.collectionVariables.set('msPhysicalStart', find('MS-SHT-02').inventory.physical_qty);",
+                  "pm.collectionVariables.set('hpPhysicalStart', find('HP-200').inventory.physical_qty);",
+                  "// one more than what is available, so \"Confirm\" is guaranteed to fail for lack of stock",
+                  "pm.collectionVariables.set('lowStockQty', find('HP-200').inventory.available_qty + 2);",
+                  "pm.collectionVariables.set('hpPhysicalRaised', find('HP-200').inventory.physical_qty + 20);",
+                  "pm.test('available_qty = physical_qty - reserved_qty for every product', () => pm.expect(products.every((p) => p.inventory.available_qty === p.inventory.physical_qty - p.inventory.reserved_qty)).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "description": "Each product has inventory { physical_qty, reserved_qty, available_qty }. available_qty is computed by the backend (physical - reserved). The tests below remember stock levels for the rest of the run."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Enquiries (as SALES)",
+      "item": [
+        {
+          "name": "Create enquiry (MS-SHT-02 x 100 and HP-200 x more than available)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('enquiryId', json.id);",
+                  "pm.test('numbered ENQ-nnnn and NEW', () => { pm.expect(json.enquiry_no).to.match(/^ENQ-\\d{4}$/); pm.expect(json.status).to.eql('NEW'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/enquiries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enquiries"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customerId}},\n  \"required_date\": \"2026-12-31\",\n  \"notes\": \"Created from Postman\",\n  \"items\": [\n    {\n      \"product_id\": {{msProductId}},\n      \"quantity\": 100\n    },\n    {\n      \"product_id\": {{hpProductId}},\n      \"quantity\": {{lowStockQty}}\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create enquiry with the same product twice (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('backend explains why', () => pm.expect(pm.response.json().error).to.include('only once'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/enquiries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enquiries"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customerId}},\n  \"items\": [\n    {\n      \"product_id\": {{msProductId}},\n      \"quantity\": 1\n    },\n    {\n      \"product_id\": {{msProductId}},\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List enquiries",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/enquiries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enquiries"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get enquiry by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/enquiries/{{enquiryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enquiries",
+                "{{enquiryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create a second enquiry (to mark as lost)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('lostEnquiryId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/enquiries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enquiries"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customerId}},\n  \"items\": [\n    {\n      \"product_id\": {{bbProductId}},\n      \"quantity\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Mark that enquiry LOST",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/enquiries/{{lostEnquiryId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enquiries",
+                "{{lostEnquiryId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"LOST\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Mark it LOST again (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/enquiries/{{lostEnquiryId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enquiries",
+                "{{lostEnquiryId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"LOST\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Quotations (as SALES)",
+      "item": [
+        {
+          "name": "Create quotation (backend calculates the totals)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('quotationId', json.id);",
+                  "const hpQty = Number(pm.collectionVariables.get('lowStockQty'));",
+                  "pm.test('line 1 is exactly 5310', () => pm.expect(Number(json.items[0].line_amount)).to.eql(5310));",
+                  "pm.test('grand_total is calculated by the backend, not the fake 1', () => pm.expect(Number(json.grand_total)).to.eql(5310 + hpQty * 28910));",
+                  "pm.test('status DRAFT, enquiry became QUOTED', () => { pm.expect(json.status).to.eql('DRAFT'); pm.expect(json.enquiry.status).to.eql('QUOTED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry_id\": {{enquiryId}},\n  \"valid_until\": \"2027-01-31\",\n  \"grand_total\": 1,\n  \"items\": [\n    {\n      \"product_id\": {{msProductId}},\n      \"quantity\": 100,\n      \"unit_price\": 50,\n      \"discount_pct\": 10,\n      \"gst_pct\": 18,\n      \"line_amount\": 1\n    },\n    {\n      \"product_id\": {{hpProductId}},\n      \"quantity\": {{lowStockQty}}\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Line 1: 100 x 50, 10% discount, 18% GST = 5310.00. Line 2 uses the product base price 24500 and default 18% GST. The fake grand_total and line_amount below are ignored by the backend."
+          }
+        },
+        {
+          "name": "Create quotation with unit_price 1.005 (expect 400: max 2 decimals)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry_id\": {{enquiryId}},\n  \"valid_until\": \"2027-01-31\",\n  \"items\": [\n    {\n      \"product_id\": {{msProductId}},\n      \"quantity\": 1,\n      \"unit_price\": 1.005\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create quotation for a LOST enquiry (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry_id\": {{lostEnquiryId}},\n  \"valid_until\": \"2027-01-31\",\n  \"items\": [\n    {\n      \"product_id\": {{bbProductId}},\n      \"quantity\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Convert a DRAFT quotation (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('rule message', () => pm.expect(pm.response.json().error).to.eql('Only ACCEPTED quotations can be converted'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{quotationId}}/convert",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{quotationId}}",
+                "convert"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept a DRAFT quotation (expect 400: must be SENT first)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{quotationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{quotationId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Send quotation (DRAFT -> SENT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{quotationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{quotationId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Accept quotation (SENT -> ACCEPTED, enquiry becomes WON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enquiry is WON', () => pm.expect(pm.response.json().enquiry.status).to.eql('WON'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{quotationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{quotationId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reject an ACCEPTED quotation (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{quotationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{quotationId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List quotations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quotations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get quotation by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{quotationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{quotationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Convert to sales order (ACCEPTED -> PENDING order)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('orderId', json.id);",
+                  "pm.test('numbered SO-nnnn and PENDING', () => { pm.expect(json.order_no).to.match(/^SO-\\d{4}$/); pm.expect(json.status).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{quotationId}}/convert",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{quotationId}}",
+                "convert"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Convert the same quotation again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('duplicate message', () => pm.expect(pm.response.json().error).to.eql('Sales order already exists for this quotation'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{quotationId}}/convert",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{quotationId}}",
+                "convert"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Sales orders (as SALES: read only)",
+      "item": [
+        {
+          "name": "List sales orders (with current availability per item)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get sales order (customer -> quotation -> enquiry trace)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trace is present', () => pm.expect(pm.response.json().quotation.enquiry.enquiry_no).to.match(/^ENQ-/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Confirm as SALES (expect 403: ADMIN only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dispatch as SALES (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/dispatch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "dispatch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle_no\": \"MH12\",\n  \"driver_name\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update inventory as SALES (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/{{hpProductId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "{{hpProductId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"physical_qty\": 999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Stock actions (as ADMIN)",
+      "description": "Confirm reserves stock (FOR UPDATE row lock), dispatch moves it out, cancel releases it.",
+      "item": [
+        {
+          "name": "Login as ADMIN (sets {{token}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token', json.token);",
+                  "pm.test('token returned', () => pm.expect(json.token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@erp.com\",\n  \"password\": \"Admin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Stores the JWT in the {{token}} collection variable; every other request sends it as a Bearer token."
+          }
+        },
+        {
+          "name": "Confirm with too little stock (expect 400 Insufficient stock)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message names the product and the numbers', () => pm.expect(pm.response.json().error).to.match(/^Insufficient stock for HP-200: required \\d+, available \\d+$/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Raise HP-200 physical stock (ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('available now covers the order', () => pm.expect(pm.response.json().inventory.available_qty).to.be.at.least(Number(pm.collectionVariables.get('lowStockQty'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/{{hpProductId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "{{hpProductId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"physical_qty\": {{hpPhysicalRaised}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Confirm order (reserves stock)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CONFIRMED', () => pm.expect(pm.response.json().status).to.eql('CONFIRMED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Confirm again (expect 400: only PENDING can be confirmed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set MS-SHT-02 physical stock below reserved (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.include('cannot be less than reserved'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/{{msProductId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "{{msProductId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"physical_qty\": 50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Set negative stock (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/{{msProductId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "{{msProductId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"physical_qty\": -5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Check stock: reserved is now up, physical unchanged",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const ms = pm.response.json().find((p) => p.code === 'MS-SHT-02').inventory;",
+                  "pm.test('MS-SHT-02 reserved 100, physical unchanged', () => { pm.expect(ms.reserved_qty).to.eql(100); pm.expect(ms.physical_qty).to.eql(Number(pm.collectionVariables.get('msPhysicalStart'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dispatch without vehicle_no (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/dispatch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "dispatch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driver_name\": \"Ramesh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Dispatch order (full dispatch)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('DISPATCHED with a DSP-nnnn record', () => { pm.expect(json.status).to.eql('DISPATCHED'); pm.expect(json.dispatch.dispatch_no).to.match(/^DSP-\\d{4}$/); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/dispatch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "dispatch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle_no\": \"MH12AB1234\",\n  \"driver_name\": \"Ramesh\",\n  \"dispatch_date\": \"2026-12-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Dispatch again (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/dispatch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "dispatch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle_no\": \"MH12AB1234\",\n  \"driver_name\": \"Ramesh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cancel a DISPATCHED order (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{orderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{orderId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check stock: physical AND reserved went down",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const ms = pm.response.json().find((p) => p.code === 'MS-SHT-02').inventory;",
+                  "pm.test('MS-SHT-02 reserved back to 0, physical down by 100', () => { pm.expect(ms.reserved_qty).to.eql(0); pm.expect(ms.physical_qty).to.eql(Number(pm.collectionVariables.get('msPhysicalStart')) - 100); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Cancel a confirmed order (releases stock)",
+      "description": "Builds a small second order for BB-6205 x 30, confirms it (reserved +30), then cancels it (reserved -30).",
+      "item": [
+        {
+          "name": "Login as SALES again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token', json.token);",
+                  "pm.test('token returned', () => pm.expect(json.token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sales@erp.com\",\n  \"password\": \"Sales@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Stores the JWT in the {{token}} collection variable; every other request sends it as a Bearer token."
+          }
+        },
+        {
+          "name": "Create enquiry (BB-6205 x 30)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cancelEnquiryId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/enquiries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enquiries"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customerId}},\n  \"items\": [\n    {\n      \"product_id\": {{bbProductId}},\n      \"quantity\": 30\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create quotation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cancelQuotationId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry_id\": {{cancelEnquiryId}},\n  \"valid_until\": \"2027-01-31\",\n  \"items\": [\n    {\n      \"product_id\": {{bbProductId}},\n      \"quantity\": 30\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Send",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{cancelQuotationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{cancelQuotationId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Accept",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{cancelQuotationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{cancelQuotationId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Convert",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cancelOrderId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quotations/{{cancelQuotationId}}/convert",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quotations",
+                "{{cancelQuotationId}}",
+                "convert"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login as ADMIN again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token', json.token);",
+                  "pm.test('token returned', () => pm.expect(json.token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@erp.com\",\n  \"password\": \"Admin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Stores the JWT in the {{token}} collection variable; every other request sends it as a Bearer token."
+          }
+        },
+        {
+          "name": "Confirm (reserve 30)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('30 reserved', () => pm.expect(pm.response.json().status).to.eql('CONFIRMED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{cancelOrderId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{cancelOrderId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel (release the 30)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CANCELLED', () => pm.expect(pm.response.json().status).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{cancelOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{cancelOrderId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel again (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{cancelOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{cancelOrderId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dispatch the cancelled order (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.eql('Cancelled orders cannot be dispatched'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sales-orders/{{cancelOrderId}}/dispatch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sales-orders",
+                "{{cancelOrderId}}",
+                "dispatch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle_no\": \"MH12\",\n  \"driver_name\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Check stock: BB-6205 reserved is back to 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('nothing left reserved', () => pm.expect(pm.response.json().find((p) => p.code === 'BB-6205').inventory.reserved_qty).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Put the stock back (so the collection can be re-run)",
+      "item": [
+        {
+          "name": "Restore MS-SHT-02 physical stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/{{msProductId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "{{msProductId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"physical_qty\": {{msPhysicalStart}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Restore HP-200 physical stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/{{hpProductId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "{{hpProductId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"physical_qty\": {{hpPhysicalStart}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
